@@ -35,7 +35,7 @@ public class NoteCommandParser implements Parser<NoteCommand> {
     public NoteCommand parse(String args) throws ParseException {
         requireNonNull(args);
         ArgumentMultimap argMultimap =
-                ArgumentTokenizer.tokenize(args, PREFIX_NOTE_CONTENT, PREFIX_NOTE_HEADING);
+                ArgumentTokenizer.tokenizeFirstOnly(args, PREFIX_NOTE_CONTENT, PREFIX_NOTE_HEADING);
 
         Index index;
         try {

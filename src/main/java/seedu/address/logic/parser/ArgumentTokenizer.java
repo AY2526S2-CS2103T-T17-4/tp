@@ -2,7 +2,9 @@ package seedu.address.logic.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -29,6 +31,20 @@ public class ArgumentTokenizer {
     }
 
     /**
+     * Tokenizes an arguments string, recognising only the first occurrence of each prefix.
+     * This prevents prefix-like text in free-text fields (e.g. addresses) from being mis-parsed.
+     * Use this for commands where each prefix appears at most once (e.g. add, edit).
+     *
+     * @param argsString Arguments string of the form: {@code preamble <prefix>value <prefix>value ...}
+     * @param prefixes   Prefixes to tokenize the arguments string with
+     * @return           ArgumentMultimap object that maps prefixes to their arguments
+     */
+    public static ArgumentMultimap tokenizeFirstOnly(String argsString, Prefix... prefixes) {
+        List<PrefixPosition> positions = findFirstPrefixPositions(argsString, prefixes);
+        return extractArguments(argsString, positions);
+    }
+
+    /**
      * Finds all zero-based prefix positions in the given arguments string.
      *
      * @param argsString Arguments string of the form: {@code preamble <prefix>value <prefix>value ...}
@@ -39,6 +55,30 @@ public class ArgumentTokenizer {
         return Arrays.stream(prefixes)
                 .flatMap(prefix -> findPrefixPositions(argsString, prefix).stream())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Finds only the first zero-based position of each unique prefix string in the given arguments string.
+     * Prefixes that share the same string (e.g. two Prefix objects both using "a/") are treated as one.
+     *
+     * @param argsString Arguments string of the form: {@code preamble <prefix>value <prefix>value ...}
+     * @param prefixes   Prefixes to find in the arguments string
+     * @return           List containing at most one position per unique prefix string
+     */
+    private static List<PrefixPosition> findFirstPrefixPositions(String argsString, Prefix... prefixes) {
+        List<PrefixPosition> result = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (Prefix prefix : prefixes) {
+            if (seen.contains(prefix.getPrefix())) {
+                continue;
+            }
+            seen.add(prefix.getPrefix());
+            int pos = findPrefixPosition(argsString, prefix.getPrefix(), 0);
+            if (pos != -1) {
+                result.add(new PrefixPosition(prefix, pos));
+            }
+        }
+        return result;
     }
 
     /**

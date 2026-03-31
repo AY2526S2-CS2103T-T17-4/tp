@@ -19,7 +19,7 @@ public class RejectCommandParser implements Parser<RejectCommand> {
      * @throws ParseException if the user input does not conform the expected format
      */
     public RejectCommand parse(String args) throws ParseException {
-        ArgumentMultimap argMultimap = ArgumentTokenizer.tokenize(args, PREFIX_REASON);
+        ArgumentMultimap argMultimap = ArgumentTokenizer.tokenizeFirstOnly(args, PREFIX_REASON);
 
         if (!isReasonPrefixPresent(argMultimap)) {
             throw new ParseException(Messages.MESSAGE_REJECT_INVALID_FORMAT);

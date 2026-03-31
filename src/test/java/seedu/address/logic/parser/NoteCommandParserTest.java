@@ -87,13 +87,17 @@ public class NoteCommandParserTest {
     }
 
     @Test
-    public void parse_duplicateContentPrefix_throwsParseException() {
-        assertThrows(ParseException.class, () -> parser.parse(" 1 n/first n/second"));
+    public void parse_prefixLikeTextInContent_success() throws Exception {
+        // Second n/ should be absorbed into content, not treated as a duplicate prefix
+        NoteCommand cmd = parser.parse(" 1 n/first n/second");
+        assertEquals("first n/second", cmd.getNote().content);
     }
 
     @Test
-    public void parse_duplicateHeadingPrefix_throwsParseException() {
-        assertThrows(ParseException.class, () -> parser.parse(" 1 n/content h/first h/second"));
+    public void parse_prefixLikeTextInHeading_success() throws Exception {
+        // Second h/ should be absorbed into heading, not treated as a duplicate prefix
+        NoteCommand cmd = parser.parse(" 1 n/content h/first h/second");
+        assertEquals("first h/second", cmd.getNote().heading);
     }
 
     @Test
