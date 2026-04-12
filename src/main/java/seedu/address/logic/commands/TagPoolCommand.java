@@ -57,7 +57,6 @@ public class TagPoolCommand extends Command {
     public TagPoolCommand(List<Tag> toAdd, List<Tag> toDelete) {
         requireNonNull(toAdd);
         requireNonNull(toDelete);
-        assert !toAdd.isEmpty() || !toDelete.isEmpty() : "Mutation mode requires at least one tag operation";
         this.toAdd = List.copyOf(toAdd);
         this.toDelete = List.copyOf(toDelete);
         this.isListMode = false;
@@ -77,36 +76,76 @@ public class TagPoolCommand extends Command {
         requireNonNull(model);
 
         if (isListMode) {
-            return listTagPool(model);
+            ObservableList<Tag> allTags = model.getAddressBook().getTagList();
+            if (allTags.isEmpty()) {
+                return new CommandResult(MESSAGE_POOL_EMPTY);
+            }
+            String tagNames = allTags.stream()
+                    .map(tag -> tag.tagName)
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .collect(Collectors.joining(", "));
+            return new CommandResult(String.format(MESSAGE_POOL_LISTING,
+                    allTags.size(), allTags.size() == 1 ? "" : "s", tagNames));
         }
 
         // ── Phase 1: Pre-Execution Validation (zero mutations) ──
-        validatePreExecution(model);
-        assert toDelete.stream().allMatch(model::hasTag) : "All tags to delete must exist after validation";
-        assert toAdd.stream().noneMatch(model::hasTag) : "No tags to add should already exist after validation";
 
-        // ── Phases 2–6: Sweep, Mutate, Reset, Feedback ──
-        cascadeSweep(model);
-        applyPoolMutations(model);
-        return new CommandResult(buildResultMessage());
-    }
-
-    private CommandResult listTagPool(Model model) {
-        ObservableList<Tag> allTags = model.getAddressBook().getTagList();
-        if (allTags.isEmpty()) {
-            return new CommandResult(MESSAGE_POOL_EMPTY);
+        // 1a. Conflict check
+        for (Tag addTag : toAdd) {
+            for (Tag delTag : toDelete) {
+                if (addTag.equals(delTag)) {
+                    throw new CommandException(String.format(MESSAGE_CONFLICT, addTag.tagName));
+                }
+            }
         }
-        String tagNames = allTags.stream()
-                .map(tag -> tag.tagName)
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .collect(Collectors.joining(", "));
-        return new CommandResult(String.format(MESSAGE_POOL_LISTING,
-                allTags.size(), allTags.size() == 1 ? "" : "s", tagNames));
-    }
 
-    private void cascadeSweep(Model model) {
+        // 1b. Duplicate check within toAdd list
+        for (int i = 0; i < toAdd.size(); i++) {
+            for (int j = i + 1; j < toAdd.size(); j++) {
+                if (toAdd.get(i).equals(toAdd.get(j))) {
+                    throw new CommandException(String.format(
+                            "Error: Duplicate tag '%s' in your add list. "
+                            + "Each tag can only appear once per command.", toAdd.get(j).tagName));
+                }
+            }
+        }
+
+        // 1c. Duplicate check within toDelete list
+        for (int i = 0; i < toDelete.size(); i++) {
+            for (int j = i + 1; j < toDelete.size(); j++) {
+                if (toDelete.get(i).equals(toDelete.get(j))) {
+                    throw new CommandException(
+                            String.format("Error: Duplicate tag '%s' in delete list.", toDelete.get(j).tagName));
+                }
+            }
+        }
+
+        // 1d. Additions check against existing pool
+        for (Tag tag : toAdd) {
+            if (model.hasTag(tag)) {
+                throw new CommandException(String.format(MESSAGE_DUPLICATE_ADD, tag.tagName));
+            }
+        }
+
+        // 1e. Deletions check against existing pool
+        for (Tag tag : toDelete) {
+            if (!model.hasTag(tag)) {
+                throw new CommandException(String.format(MESSAGE_MISSING_DELETE, tag.tagName));
+            }
+        }
+
+        // 1f. Capacity check (net change: additions minus deletions)
+        int currentPoolSize = model.getAddressBook().getTagList().size();
+        if (!toAdd.isEmpty() && currentPoolSize - toDelete.size() + toAdd.size() > MAX_POOL_SIZE) {
+            throw new CommandException(MESSAGE_POOL_FULL);
+        }
+
+        // ── Phase 2: Cascading Sweep ──
+        // Remove toDelete tags from all persons before touching the pool, so pool state
+        // is only mutated after all person edits succeed (validate-all-then-mutate).
         List<Person> allCandidates = model.getAddressBook().getPersonList();
         for (Tag targetTagToDelete : toDelete) {
+            // Iterate over a snapshot to avoid ConcurrentModificationException
             List<Person> snapshot = List.copyOf(allCandidates);
             for (Person person : snapshot) {
                 if (person.getTags().contains(targetTagToDelete)) {
@@ -120,72 +159,29 @@ public class TagPoolCommand extends Command {
                 }
             }
         }
-    }
 
-    private void applyPoolMutations(Model model) {
+        // ── Phase 3: Pool Deletions ──
         for (Tag tag : toDelete) {
             model.deleteTag(tag);
         }
+
+        // ── Phase 4: Pool Additions ──
         for (Tag tag : toAdd) {
             model.addTag(tag);
         }
+
+        // ── Phase 5: Reset display ──
         if (!toAdd.isEmpty() || !toDelete.isEmpty()) {
             model.updateFilteredPersonList(Model.PREDICATE_SHOW_ALL_PERSONS);
         }
-    }
 
-    private String buildResultMessage() {
+        // ── Phase 6: UI Feedback ──
         String result = String.format(MESSAGE_SUCCESS, toAdd.size(), toDelete.size());
         if (!toDelete.isEmpty()) {
             result += "\nWarning: Cascade deletion — candidates assigned to the deleted tag(s)"
                     + " have had those tags removed (if any such candidates exist).";
         }
-        return result;
-    }
-    private void validatePreExecution(Model model) throws CommandException {
-        // 1a. Conflict check
-        for (Tag addTag : toAdd) {
-            for (Tag delTag : toDelete) {
-                if (addTag.equals(delTag)) {
-                    throw new CommandException(String.format(MESSAGE_CONFLICT, addTag.tagName));
-                }
-            }
-        }
-        // 1b. Duplicate check within toAdd list
-        for (int i = 0; i < toAdd.size(); i++) {
-            for (int j = i + 1; j < toAdd.size(); j++) {
-                if (toAdd.get(i).equals(toAdd.get(j))) {
-                    throw new CommandException(String.format("Error: Duplicate tag '%s' in your add list. "
-                            + "Each tag can only appear once per command.", toAdd.get(j).tagName));
-                }
-            }
-        }
-        // 1c. Duplicate check within toDelete list
-        for (int i = 0; i < toDelete.size(); i++) {
-            for (int j = i + 1; j < toDelete.size(); j++) {
-                if (toDelete.get(i).equals(toDelete.get(j))) {
-                    throw new CommandException(String.format("Error: Duplicate tag '%s' in delete list.",
-                            toDelete.get(j).tagName));
-                }
-            }
-        }
-        // 1d. Additions check against existing pool
-        for (Tag tag : toAdd) {
-            if (model.hasTag(tag)) {
-                throw new CommandException(String.format(MESSAGE_DUPLICATE_ADD, tag.tagName));
-            }
-        }
-        // 1e. Deletions check against existing pool
-        for (Tag tag : toDelete) {
-            if (!model.hasTag(tag)) {
-                throw new CommandException(String.format(MESSAGE_MISSING_DELETE, tag.tagName));
-            }
-        }
-        // 1f. Capacity check (net change: additions minus deletions)
-        int currentPoolSize = model.getAddressBook().getTagList().size();
-        if (!toAdd.isEmpty() && currentPoolSize - toDelete.size() + toAdd.size() > MAX_POOL_SIZE) {
-            throw new CommandException(MESSAGE_POOL_FULL);
-        }
+        return new CommandResult(result);
     }
 
     @Override

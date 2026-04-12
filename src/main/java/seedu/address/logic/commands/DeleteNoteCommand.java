@@ -77,7 +77,17 @@ public class DeleteNoteCommand extends Command {
         List<Note> updatedNotes = new ArrayList<>(currentNotes);
         updatedNotes.remove(noteIndex.getZeroBased());
 
-        Person editedPerson = NoteCommand.createEditedPerson(personToEdit, updatedNotes);
+        Person editedPerson = new Person(
+                personToEdit.getName(),
+                personToEdit.getPhone(),
+                personToEdit.getEmail(),
+                personToEdit.getAddress(),
+                personToEdit.getTags(),
+                personToEdit.getRejectionReasons(),
+                personToEdit.getDateAdded(),
+                personToEdit.getPriority(),
+                updatedNotes
+        );
 
         model.setPerson(personToEdit, editedPerson);
         model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
