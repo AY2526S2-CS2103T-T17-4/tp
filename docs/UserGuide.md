@@ -545,6 +545,7 @@ Examples:
 ![addnote.png](images/addnote.png)
 
 > **Expected output:** `Successfully added note to candidate: John Doe`
+
 ---
 
 ### Editing a note : `editnote`
