@@ -478,10 +478,6 @@ Format: `sort date o/ORDER`
 :warning: **Warning:** Cannot sort an empty candidate list — an error is shown if Talently has no candidates.
 </div>
 
-<div markdown="span" class="alert alert-warning">
-:warning: **Warning:** Sorting clears the entire command history. `undo` and `redo` will not be available after sorting.
-</div>
-
 Examples:
 * `sort date o/asc` — Oldest candidates first.
 * `sort date o/desc` — Newest candidates first.
@@ -506,10 +502,6 @@ Format: `sort pr o/ORDER`
 
 <div markdown="span" class="alert alert-warning">
 :warning: **Warning:** Cannot sort an empty candidate list — an error is shown if Talently has no candidates.
-</div>
-
-<div markdown="span" class="alert alert-warning">
-:warning: **Warning:** Sorting clears the entire command history. `undo` and `redo` will not be available after sorting.
 </div>
 
 Examples:
@@ -656,10 +648,6 @@ Format: `undo`
 * Does **not** apply to read-only commands (`find`, `filter`, `list`, `show`, `help`, `exit`). Typing `undo` after one of these steps back to the last data-changing action, not the last view change.
 * If there is nothing to undo, an error is shown.
 
-<div markdown="span" class="alert alert-warning">
-:warning: **Warning:** Using any `sort` command (`sort date`, `sort pr`) clears the entire command history. Once you sort, `undo` and `redo` are no longer available.
-</div>
-
 Examples:
 * `remove 2` then `undo` — Restores the removed candidate.
 * `undo` then `undo` — Steps back two actions.
@@ -676,10 +664,6 @@ Format: `redo`
 
 * Can only be used after `undo`. If there is no undone state, an error is shown.
 * Any new modifying command after `undo` clears the redo history — once you make a new change, the previously undone actions can no longer be redone.
-
-<div markdown="span" class="alert alert-warning">
-:warning: **Warning:** Using any `sort` command (`sort date`, `sort pr`) clears the entire command history. Once you sort, `redo` is no longer available.
-</div>
 
 Examples:
 * `remove 2` → `undo` → `redo` — Re-applies the removal.
