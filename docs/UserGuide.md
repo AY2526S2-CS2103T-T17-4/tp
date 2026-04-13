@@ -363,6 +363,8 @@ Returns all candidates who have a specific tag assigned.
 
 Format: `filter TAG`
 
+* Accepts exactly one tag — multiple words are not allowed.
+* The tag must exist in the tag pool. If it does not, an error is shown.
 * Exact match (not partial). `Java` does not match `JavaScript`.
 * Case-insensitive. `java` matches `Java`.
 * Tag must follow naming rules: must start with a letter or number, followed by letters, numbers, or the symbols `. + - _ ( ) @ # ! ? '`, no spaces, 1–30 characters.
@@ -543,19 +545,11 @@ Examples:
 ![addnote.png](images/addnote.png)
 
 > **Expected output:** `Successfully added note to candidate: John Doe`
-
 ---
 
 ### Editing a note : `editnote`
 
 Edits the content and/or heading of an existing note.
-
-* Accepts exactly one tag — multiple words are not allowed.
-* The tag must exist in the tag pool. If it does not, an error is shown.
-* Exact match (not partial). `Java` does not match `JavaScript`.
-* Case-insensitive. `java` matches `Java`.
-* If the tag exists but no candidates have it, "No matching candidates found." is shown.
-* Tag must follow naming rules: must start with a letter or number, followed by letters, numbers, or the symbols `. + - _ ( ) @ # ! ? '`, no spaces, 1–30 characters.
 
 Format: `editnote INDEX NOTE_INDEX [c/CONTENT] [h/HEADING]` *(at least one required)*
 
