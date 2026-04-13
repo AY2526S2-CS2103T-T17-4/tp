@@ -1665,8 +1665,11 @@ testers are expected to do more *exploratory* testing.
 1. Test case: `filter shortlisted` (different casing)<br>
    Expected: Same result as above (case-insensitive match).
 
-1. Test case: `filter Java` when no candidate has that tag.<br>
-   Expected: An empty list is shown. No error.
+1. Test case: `filter Java` when the `Java` tag exists in the pool but no candidate has it.<br>
+   Expected: "No matching candidates found." is shown. The list is cleared.
+
+1. Test case: `filter Java` when the `Java` tag does not exist in the tag pool.<br>
+   Expected: Error message indicating the tag does not exist in the pool. The list is unchanged.
 
 1. Test case: `filter Java JavaScript` (multiple words)<br>
    Expected: Error message indicating `filter` takes exactly one tag.
