@@ -171,12 +171,14 @@ The data file `[JAR file location]/data/talently.json` is in JSON format. While 
 |---|---|---|
 | NAME | `n/` | Letters (a-z, A-Z), digits (0-9), spaces, hyphens, apostrophes, periods, slashes, commas, `@` symbols, backticks, and parentheses. Must start with a letter. 1–100 characters. Strips leading/trailing whitespace and normalizes internal spaces. |
 | PHONE | `p/` | Optional `+` prefix, then digits with optional spaces, hyphens, or parentheses as separators. Must start with a `+` or digit, and must end with a digit. Must contain 3–15 digits (separators excluded). Strips leading/trailing whitespace. |
-| EMAIL | `e/` | Standard email format. Max 254 characters. Automatically lowercased. The local part must start and end with a letter or digit; no consecutive special characters. The domain must have at least one period and a TLD of at least two letters. Strips leading/trailing whitespace. |
+| EMAIL | `e/` | Must be in `local@domain.tld` format. Max 254 characters. Automatically lowercased. The local part must start and end with a letter or digit; no consecutive special characters. The domain must have at least one period and a TLD of at least two letters. Strips leading/trailing whitespace. |
 | ADDRESS | `a/` | Any non-empty printable ASCII text. Max 200 characters. Strips leading/trailing whitespace. |
 | TAG | `at/` / `dt/` | Must start with a letter or number. No spaces. 1–30 characters. Case-insensitive. Strips leading/trailing whitespace. |
 | PRIORITY | `pr/` | Case-insensitive `yes` or `no`. Defaults to `no` if omitted during creation. Strips leading/trailing whitespace. |
 | REJECTION REASON | *(positional)* | Letters, numbers, spaces, and common punctuation. Must not be blank. Max 200 characters. Strips leading/trailing whitespace. Entered directly after the index with no prefix. |
 | NOTE | `c/`, `h/` | Heading (`h/`) is optional, defaults to `General Note`. Content (`c/`) is required. Printable ASCII only. Converts newlines to spaces and strips leading/trailing whitespace. |
+
+Refer to the respective command sections for prefixes that must be avoided within field values.
 
 All text fields accept **printable ASCII characters only** — non-ASCII input (accented letters, emojis, CJK characters) is rejected. See [Environment assumptions](#environment-assumptions) for details.
 
@@ -211,7 +213,7 @@ Format: `add n/NAME p/PHONE e/EMAIL a/ADDRESS [pr/PRIORITY]`
 
 * **NAME** (`n/`, required): Letters (a-z, A-Z), digits (0-9), spaces, hyphens `-`, apostrophe `'`, periods `.`, slashes `/`, commas `,`, `@` symbols, backticks, and parentheses `()`. Must start with a letter. 1–100 characters. Strips leading/trailing whitespace and normalizes internal spaces. **Avoid the sequences ` n/`, ` p/`, ` e/`, ` a/`, ` pr/` (space + prefix) inside the value** — they are treated as new prefixes.
 * **PHONE** (`p/`, required): Optional `+` prefix, then digits with optional spaces, hyphens `-`, or parentheses `()` as separators. Must start with a `+` or digit, and must end with a digit. Must contain 3–15 digits (separators excluded). Strips leading/trailing whitespace.
-* **EMAIL** (`e/`, required): `local@domain` format. Max 254 characters. Automatically lowercased. The local part may contain letters, digits, and `+ _ . -`; must start and end with a letter or digit; no consecutive special characters (e.g. `a..b@x.com` is invalid). Strips leading/trailing whitespace.
+* **EMAIL** (`e/`, required): `local@domain.tld` format. Max 254 characters. Automatically lowercased. The local part may contain letters, digits, and `+ _ . -`; must start and end with a letter or digit; no consecutive special characters (e.g. `a..b@x.com` is invalid). Must have at least one `.` and a TLD of at least two letters (e.g. `.com`, `.in`). Strips leading/trailing whitespace.
 * **ADDRESS** (`a/`, required): Any non-empty printable ASCII text (no accented letters, emojis, or non-ASCII input). Max 200 characters. Strips leading/trailing whitespace. **Avoid the sequences ` n/`, ` p/`, ` e/`, ` a/`, ` pr/` (space + prefix) inside the value** — they are treated as new prefixes.
 * **PRIORITY** (`pr/`, optional): Case-insensitive `yes` or `no`. Default: `no`. Strips leading/trailing whitespace.
 
@@ -274,6 +276,8 @@ Format: `edit INDEX [n/NAME] [p/PHONE] [e/EMAIL] [a/ADDRESS] [pr/PRIORITY]` *(at
 * If the new values are identical to the existing ones (including casing), a message indicating no changes were detected is shown and no modification is made. Case-only changes (e.g., `alice` → `Alice`) are treated as real edits, except for emails which are automatically lowercased and thus treated as case-insensitive during this check.
 * **NAME / ADDRESS values:** Do not include the sequences ` n/`, ` p/`, ` e/`, ` a/`, or ` pr/` (space + prefix) inside a name or address value — the parser will treat them as the start of a new field, splitting your input incorrectly.
 * **EMAIL:** The local part must start and end with a letter or digit; consecutive special characters (e.g. `a..b@x.com`) are not allowed.
+
+Field formats follow the same validation rules as defined in the Add command. Refer to the Add Command section for full specifications.
 
 <div markdown="span" class="alert alert-warning">
 :warning: **Warning:** Editing phone or email to match another existing candidate will fail — duplicates are not allowed.
