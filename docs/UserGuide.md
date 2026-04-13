@@ -368,7 +368,7 @@ Format: `filter TAG`
 * Exact match (not partial). `Java` does not match `JavaScript`.
 * Case-insensitive. `java` matches `Java`.
 * Tag must follow naming rules: must start with a letter or number, followed by letters, numbers, or the symbols `. + - _ ( ) @ # ! ? '`, no spaces, 1–30 characters.
-* If no candidates have the specified tag (including if the tag does not exist in the tag pool at all), `No matching candidates found.` is shown. Run `list` to return to the full list.
+* If no candidates have the specified tag, `No matching candidates found.` is shown. Run `list` to return to the full list.
 
 <div markdown="span" class="alert alert-primary">
 :bulb: **Tip:** Use `filter` to pull all candidates at a specific hiring stage, e.g. `filter Shortlisted`.
