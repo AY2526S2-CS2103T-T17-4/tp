@@ -195,20 +195,34 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 
 This section describes some noteworthy details on how certain features are implemented.
 
-### Undo feature
+### Undo/Redo feature
 
 #### Implementation
 
-The undo mechanism is facilitated by `VersionedAddressBook`. It extends `AddressBook` with a state history, stored
+The undo/redo mechanism is facilitated by `VersionedAddressBook`. It extends `AddressBook` with a state history, stored
 internally as an `addressBookStateList` and `currentStatePointer`. It implements the following operations:
 
 * `VersionedAddressBook#commit()`— Saves the current data state in its history.
 * `VersionedAddressBook#undo()`— Restores the previous data state from its history.
+* `VersionedAddressBook#redo()`— Restores the next data state from its history.
 
-These operations are exposed in the `Model` interface as `Model#commitAddressBook()`, `Model#canUndoAddressBook()`, and
-`Model#undoAddressBook()`.
+These operations are exposed in the `Model` interface as `Model#commitAddressBook()`, `Model#canUndoAddressBook()`,
+`Model#undoAddressBook()`, `Model#canRedoAddressBook()`, and `Model#redoAddressBook()`.
 
-Given below is an example usage scenario and how undo behaves at each step.
+Each snapshot captures the full `AddressBook` state, including the person list, tag pool, and the active `SortMode`.
+This means undo/redo restores both the data and the sort order that was in effect at that point in history.
+
+After either an undo or redo, the filtered person list is reset to show all persons (i.e., any active filter is cleared).
+
+Undo/redo only operates on the `AddressBook` data state. The candidate detail panel selection is **not** part of the
+snapshotted state — it is UI-level state managed by `MainWindow` (via the `currentlyShownPerson` field) and is not
+tracked in `VersionedAddressBook`. After an undo or redo, `MainWindow` uses best-effort matching to keep the detail
+panel in sync: if the currently shown candidate still exists in the restored state, the panel refreshes with their
+updated data; if the candidate no longer exists (e.g., an `add` was undone), the panel is cleared. Conversely, if an
+undo restores a previously removed candidate, the panel is re-opened for that candidate. However, undoing a `show`
+command itself has no effect, since `show` does not mutate the address book.
+
+Given below is an example usage scenario and how undo/redo behaves at each step.
 
 Step 1. The user launches the application for the first time. `VersionedAddressBook` is initialized with the initial
 data state, and `currentStatePointer` points to that single state.
@@ -232,7 +246,7 @@ snapshot is committed.
 
 Step 4. The user decides the latest change was a mistake and executes `undo`. `UndoCommand` checks
 `Model#canUndoAddressBook()`. If true, it calls `Model#undoAddressBook()`, shifting `currentStatePointer` left by one
-and restoring that previous state.
+and restoring that previous state. The filtered person list is then reset to show all persons.
 
 ![UndoRedoState3](images/UndoRedoState3.png)
 
@@ -252,13 +266,35 @@ Similarly, how an undo operation goes through the `Model` component is shown bel
 
 ![UndoSequenceDiagram](images/UndoSequenceDiagram-Model.png)
 
-Step 5. If the user performs a new mutating command after an undo, `VersionedAddressBook#commit()` removes all states
+Step 5. The user executes `redo` to reapply the previously undone change. `RedoCommand` checks
+`Model#canRedoAddressBook()`. If true, it calls `Model#redoAddressBook()`, shifting `currentStatePointer` right by one
+and restoring that next state. As with undo, the filtered person list is reset to show all persons.
+
+<div markdown="span" class="alert alert-info">:information_source: **Note:** If `currentStatePointer` is already at the latest state, there is no next state to restore. In that case, `redo` returns an error message instead of attempting restoration.
+
+</div>
+
+Step 6. If the user performs a new mutating command after an undo, `VersionedAddressBook#commit()` removes all states
 after `currentStatePointer` before appending the new state. This keeps history linear and consistent with the latest
 confirmed state.
 
 The following activity diagram summarizes what happens when a user executes a new command:
 
 <img src="images/CommitActivityDiagram.png" width="250" />
+
+#### Interaction with sort
+
+Sort commands (`sort date`, `sort pr`) are treated as data-mutating commands. When a sort is executed, it changes both
+the order of the person list and the `SortMode` stored in the `AddressBook`. `LogicManager` detects this data change
+through its generic pre/post state comparison and commits the new state automatically.
+
+Because `SortMode` is part of the snapshotted `AddressBook` state (restored via `AddressBook#resetData()`), undoing past
+a sort command also restores the sort order that was in effect before the sort. For example, if the list was sorted by
+name, then the user ran `sort date o/asc`, undoing that command restores the original name-based ordering.
+
+Mutating commands executed after a sort (e.g., `add`, `edit`) re-sort the list according to the active `SortMode` to
+maintain a consistent display order. This re-sorting is handled by `ModelManager`, which calls
+`comparatorFor(addressBook.getSortMode())` after each mutation.
 
 #### Design considerations:
 
@@ -276,9 +312,10 @@ The following activity diagram summarizes what happens when a user executes a ne
 **Aspect: When to commit state:**
 
 * **Alternative 1 (current choice):** `LogicManager` compares pre- and post-command data state. If different, commits
-  automatically.
-    * Pros: No per-command boilerplate — all mutating commands are undoable by default. Adding a new command does not
-      require remembering to call `commit()`.
+  automatically. `UndoCommand` and `RedoCommand` are explicitly excluded from this check to avoid committing state
+  changes that are themselves undo/redo operations.
+    * Pros: No per-command boilerplate — all mutating commands (including sort) are undoable by default. Adding a new
+      command does not require remembering to call `commit()` or adding special-case logic in `LogicManager`.
     * Cons: Requires creating a snapshot of the entire data state before every command execution, even if the command is
       read-only (e.g., `list`, `find`).
 
@@ -286,6 +323,22 @@ The following activity diagram summarizes what happens when a user executes a ne
     * Pros: No unnecessary snapshots for read-only commands.
     * Cons: Developers must remember to add the commit call in every new mutating command. Forgetting this silently
       breaks undo for that command.
+
+**Aspect: Whether to cap the undo/redo history depth:**
+
+The `addressBookStateList` in `VersionedAddressBook` is an unbounded `ArrayList` — there is no maximum number of states enforced.
+
+* **Alternative 1 (current choice):** No cap on history depth.
+    * Pros:
+        * Data size is inherently bounded. Each snapshot is a full copy of an `AddressBook`, which holds a flat list of candidates. A typical recruiter's working set is in the hundreds of candidates, not millions. The per-snapshot heap cost stays in the low-kilobyte range, so even dozens of stored states have negligible memory impact.
+        * History is session-scoped and volatile. The entire `addressBookStateList` is held only in JVM heap memory and discarded when the application exits, so the list cannot grow unboundedly across sessions.
+        * History depth is naturally self-limiting. A new state is only appended after an actual data mutation. Since commands are issued interactively at human typing speed, the number of commits per session is realistically small.
+        * An arbitrary cap creates a worse user experience than no cap. A hard limit would silently discard the oldest states without warning, creating a confusing failure mode that would require extra UI affordance to communicate.
+    * Cons: If the application were extended to support bulk imports of thousands of candidates, per-snapshot memory could become non-trivial.
+
+* **Alternative 2:** Enforce a fixed history cap (e.g., a ring buffer of the last N states).
+    * Pros: Provides a memory upper bound regardless of session length.
+    * Cons: Silently truncates old history, surprising users who expect to undo an earlier command. Adds implementation complexity (ring buffer management) for a problem that does not arise in the current use case. The recommended mitigation if bulk operations are added is to adopt per-command undo (Alternative 2 above) for those commands instead.
 
 ### Tag pool design
 
