@@ -363,6 +363,8 @@ Returns all candidates who have a specific tag assigned.
 
 Format: `filter TAG`
 
+* Accepts exactly one tag — multiple words are not allowed.
+* The tag must exist in the tag pool. If it does not, an error is shown.
 * Exact match (not partial). `Java` does not match `JavaScript`.
 * Case-insensitive. `java` matches `Java`.
 * Tag must follow naming rules: must start with a letter or number, followed by letters, numbers, or the symbols `. + - _ ( ) @ # ! ? '`, no spaces, 1–30 characters.
@@ -543,7 +545,6 @@ Examples:
 ![addnote.png](images/addnote.png)
 
 > **Expected output:** `Successfully added note to candidate: John Doe`
-
 ---
 
 ### Editing a note : `editnote`
@@ -659,6 +660,8 @@ Format: `undo`
 * Applies to: `add`, `edit`, `remove`, `addreject`, `editreject`, `deletereject`, `tag`, `tagpool`, `addnote`, `editnote`, `deletenote`, `clear`.
 * Does **not** apply to read-only commands (`find`, `filter`, `list`, `show`, `help`, `exit`). Typing `undo` after one of these steps back to the last data-changing action, not the last view change.
 * If there is nothing to undo, an error is shown.
+* Any active filter is cleared after `undo` — the full candidate list is shown.
+* The candidate detail panel is **not** part of the undo history. If the panel was showing a candidate who no longer exists after the undo, the panel closes. If the undo restores a previously removed candidate, the panel re-opens for them automatically.
 
 
 Examples:
@@ -671,13 +674,13 @@ Examples:
 
 ### Redoing the last undone command : `redo`
 
-Re-applies the most recently undone data-changing command. This applies to the same set of commands as `undo`: `add`, `edit`, `remove`, `addreject`, `editreject`, `deletereject`, `tag`, `tagpool`, `addnote`, `editnote`, `deletenote`, and `clear`.
+Re-applies the most recently undone data-changing command. Applies to the same set of commands as `undo`.
 
 Format: `redo`
 
 * Can only be used after `undo`. If there is no undone state, an error is shown.
 * Any new modifying command after `undo` clears the redo history — once you make a new change, the previously undone actions can no longer be redone.
-
+* Any active filter is cleared after `redo` — the full candidate list is shown.
 
 Examples:
 * `remove 2` → `undo` → `redo` — Re-applies the removal.
