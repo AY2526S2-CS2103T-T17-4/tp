@@ -310,10 +310,7 @@ Format: `show INDEX`
 </div>
 
 <div markdown="span" class="alert alert-warning">
-:warning: **Known limitations of the detail panel auto-refresh:**<br>
-The detail panel identifies the currently shown candidate by matching their phone number, email, or name. This can produce unexpected behaviour in certain edge cases:<br>
-- **Editing name, phone, and email simultaneously** (e.g. `edit 1 n/NewName p/99999999 e/new@example.com`) may cause the panel to clear because none of the original identifiers match. Re-run `show` on the candidate to reopen the panel.<br>
-- **Candidates with identical names:** If two candidates share the same name and you `remove` or `filter` the one currently shown, the panel may switch to display the other same-name candidate instead of clearing. Re-run `show` to display the correct candidate.<br>
+:warning: **Known limitation:** When the detail panel refreshes (e.g. after adding a note or rejection), it scrolls back to the top. If you have many entries, you will need to scroll down again to see the newly added item.
 </div>
 
 Examples:
